@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWED
+  RESOLVED
+}
+
+model Company {
+  id        String     @id @default(cuid())
+  name      String
+  createdAt DateTime   @default(now())
+
+  users     User[]
+  feedbacks Feedback[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Feedback {
+  id          String          @id @default(cuid())
+  title       String
+  description String
+  sentiment   String?
+  category    String?
+  status      FeedbackStatus  @default(NEW)
+
+  companyId   String
+  company      Company @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+}
