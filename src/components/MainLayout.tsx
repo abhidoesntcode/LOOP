@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import SingleIngestModal from '@/components/SingleIngestModal';
@@ -38,6 +38,26 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [currentUser, setCurrentUser] = useState<WorkspaceUser>(INITIAL_USERS[0]); // Alex (ADMIN) by default
   const [workspace] = useState<WorkspaceInfo>(INITIAL_WORKSPACE);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  useEffect(() => {
+    fetch('/api/feedbacks')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error && Array.isArray(data) && data.length > 0) {
+          setFeedbackItems(data);
+        }
+      })
+      .catch(console.error);
+
+    fetch('/api/themes')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error && Array.isArray(data) && data.length > 0) {
+          setThemes(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // Modals state
   const [isSingleModalOpen, setIsSingleModalOpen] = useState(false);

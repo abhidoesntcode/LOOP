@@ -25,46 +25,25 @@ export default function SingleIngestModal({ isOpen, onClose, onIngest }: SingleI
 
   if (!isOpen) return null;
 
-  const handleSimulateClassification = () => {
+  const handleSimulateClassification = async () => {
     if (!content.trim()) return;
     setIsClassifying(true);
     
-    // Simulate Anthropic Claude server-side auto-classification
-    setTimeout(() => {
-      const lower = content.toLowerCase();
-      let sentiment: FeedbackItem['sentiment'] = 'NEU';
-      let score = 0.1;
-      let themes = ['General Feedback'];
-      let featureArea = 'Core Platform';
-      let aiRationale = 'Neutral user comment regarding general platform usage.';
-
-      if (lower.includes('slow') || lower.includes('error') || lower.includes('worst') || lower.includes('cant') || lower.includes("couldn't") || lower.includes('fail') || lower.includes('broken')) {
-        sentiment = 'NEG';
-        score = -0.82;
-        if (lower.includes('invite') || lower.includes('onboarding') || lower.includes('team')) {
-          themes = ['Onboarding & Team Invites'];
-          featureArea = 'Onboarding';
-          aiRationale = 'High negative score due to team onboarding friction and invitation blockers.';
-        } else if (lower.includes('sso') || lower.includes('saml') || lower.includes('okta')) {
-          themes = ['Enterprise SSO & Security'];
-          featureArea = 'Security & Auth';
-          aiRationale = 'Negative sentiment driven by missing enterprise SAML SSO compliance.';
-        } else {
-          themes = ['Dashboard Load Performance'];
-          featureArea = 'Performance';
-          aiRationale = 'Negative sentiment related to latency or errors.';
-        }
-      } else if (lower.includes('love') || lower.includes('great') || lower.includes('gorgeous') || lower.includes('fast') || lower.includes('saved')) {
-        sentiment = 'POS';
-        score = 0.91;
-        themes = ['CSV & PDF Data Export'];
-        featureArea = 'Data Export';
-        aiRationale = 'Strong positive tone celebrating efficiency gains and fast response times.';
+    try {
+      const res = await fetch('/api/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSimulatedAiResult(data);
       }
-
-      setSimulatedAiResult({ sentiment, sentimentScore: score, themes, featureArea, aiRationale });
+    } catch (e) {
+      console.error('Classification error:', e);
+    } finally {
       setIsClassifying(false);
-    }, 600);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -43,7 +43,7 @@ export default function AskLoopPage() {
   const [question, setQuestion] = useState('');
   const [isAsking, setIsAsking] = useState(false);
 
-  const handleAskQuestion = (queryText: string, feedbackItems: FeedbackItem[]) => {
+  const handleAskQuestion = async (queryText: string) => {
     if (!queryText.trim() || isAsking) return;
 
     const userMsg: ChatMessage = {
@@ -57,37 +57,36 @@ export default function AskLoopPage() {
     setQuestion('');
     setIsAsking(true);
 
-    // Simulate RAG (Retrieval-Augmented Generation) semantic vector search & Claude response
-    setTimeout(() => {
-      const lower = queryText.toLowerCase();
-      let responseText = '';
-      let cited: FeedbackItem[] = [];
-
-      if (lower.includes('onboarding') || lower.includes('invite') || lower.includes('team')) {
-        cited = feedbackItems.filter(f => f.themes.includes('Onboarding & Team Invites')).slice(0, 3);
-        responseText = `Based on **${cited.length} cited feedback records** in your workspace, customers are experiencing significant friction during the team onboarding flow. Users report that invitation links expire too quickly and they are unable to invite sub-teams without opening support tickets.`;
-      } else if (lower.includes('billing') || lower.includes('invoice') || lower.includes('payment')) {
-        cited = feedbackItems.filter(f => f.themes.includes('Invoice & Billing Portal')).slice(0, 3);
-        responseText = `Analyzing **${cited.length} billing feedback items**: Users have encountered page timeouts when attempting to download historical VAT invoices. Finance leads are requesting reliable PDF exports.`;
-      } else if (lower.includes('sso') || lower.includes('saml') || lower.includes('okta') || lower.includes('enterprise')) {
-        cited = feedbackItems.filter(f => f.themes.includes('Enterprise SSO & Security')).slice(0, 3);
-        responseText = `According to **${cited.length} sales call notes and tickets**: Enterprise prospects consider SAML 2.0 SSO and Okta integration a non-negotiable blocker before signing $45k+ ACV contracts.`;
+    let responseText = '';
+    let cited: any[] = [];
+    try {
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: queryText }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        responseText = data.answer || "No answer provided.";
+        cited = data.citedItems || [];
       } else {
-        cited = feedbackItems.filter(f => f.sentiment === 'POS').slice(0, 2);
-        responseText = `Grounding across your workspace feedback: Users are praising recent UI dashboard performance upgrades and CSV data export capabilities, which save analysts hours of manual work weekly.`;
+        responseText = "Failed to fetch response.";
       }
+    } catch (e) {
+      console.error('Ask AI error:', e);
+      responseText = "Failed to fetch response.";
+    }
 
-      const aiMsg: ChatMessage = {
-        id: `msg_ai_${Date.now()}`,
-        sender: 'assistant',
-        text: responseText,
-        citedItems: cited,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
+    const aiMsg: ChatMessage = {
+      id: `msg_ai_${Date.now()}`,
+      sender: 'assistant',
+      text: responseText,
+      citedItems: cited,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
 
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsAsking(false);
-    }, 750);
+    setMessages((prev) => [...prev, aiMsg]);
+    setIsAsking(false);
   };
 
   return (
@@ -116,7 +115,7 @@ export default function AskLoopPage() {
             {SAMPLE_PROMPTS.map((promptText, idx) => (
               <button
                 key={idx}
-                onClick={() => handleAskQuestion(promptText, feedbackItems)}
+                onClick={() => handleAskQuestion(promptText)}
                 className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-xs text-slate-300 hover:text-white transition-all shrink-0 text-left"
               >
                 "{promptText}"
@@ -195,7 +194,7 @@ export default function AskLoopPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              handleAskQuestion(question, feedbackItems);
+              handleAskQuestion(question);
             }}
             className="flex items-center gap-2 pt-2 border-t border-slate-800"
           >

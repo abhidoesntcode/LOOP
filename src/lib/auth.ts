@@ -4,6 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 // Placeholder for NextAuth configuration
 // The user will set up PrismaAdapter and proper authentication logic shortly.
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: 'Credentials',
