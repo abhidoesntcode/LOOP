@@ -1,0 +1,105 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../src/app/generated/prisma/client"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWED
+  RESOLVED
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users     User[]
+  feedbacks Feedback[]
+  themes    Theme[]
+  reports   Report[]
+}
+
+model User {
+  id       String @id @default(cuid())
+  name     String
+  email    String @unique
+  password String
+  role     Role
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Feedback {
+  id             String         @id @default(cuid())
+  content        String // The actual feedback text
+  channel        String // "G2", "Zendesk", "In-App", etc
+  sourceRef      String? // URL or ID of the source ticket/review
+  customerLabel  String? // "Enterprise", "Pro", etc
+  sentiment      String? // "POS", "NEU", "NEG"
+  sentimentScore Float?
+  status         FeedbackStatus @default(NEW)
+  companyId      String
+  company        Company        @relation(fields: [companyId], references: [id])
+  createdAt      DateTime       @default(now())
+
+  // Relations
+  themes    FeedbackTheme[]
+  embedding Embedding?
+}
+
+model Theme {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  color       String? // hex code or label for UI
+  companyId   String
+  company     Company @relation(fields: [companyId], references: [id])
+
+  feedbacks FeedbackTheme[]
+}
+
+model FeedbackTheme {
+  id         String @id @default(cuid())
+  feedbackId String
+  themeId    String
+
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  theme    Theme    @relation(fields: [themeId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, themeId])
+}
+
+model Embedding {
+  id         String                @id @default(cuid())
+  feedbackId String                @unique
+  feedback   Feedback              @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  vector     Unsupported("vector")
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  title       String
+  periodStart DateTime
+  periodEnd   DateTime
+  contentJson String // Store the structured report JSON
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  generatedBy String? // User ID or "AI"
+  createdAt   DateTime @default(now())
+}
