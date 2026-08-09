@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/app/generated/prisma/client';
 import { pipeline } from '@xenova/transformers';
 
 const prisma = new PrismaClient();

@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { getAIModel } from '@/lib/ai';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
   try {

@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { getAIModel } from '@/lib/ai';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { pipeline } from '@xenova/transformers';
-
-const prisma = new PrismaClient();
 
 let extractorPipeline: any = null;
 async function getExtractor() {
