@@ -1,0 +1,96 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgvector(map: "vector")]
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum Status {
+  NEW
+  REVIEWED
+  ACTIONED
+}
+
+model Workspace {
+  id        String     @id @default(cuid())
+  name      String
+  createdAt DateTime   @default(now())
+  users     User[]
+  feedback  Feedback[]
+  themes    Theme[]
+  reports   Report[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String?
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(ADMIN)
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reports      Report[]
+  createdAt    DateTime  @default(now())
+}
+
+model Feedback {
+  id             String          @id @default(cuid())
+  content        String
+  channel        String
+  sourceRef      String?
+  customerLabel  String?
+  sentiment      String?         // POS, NEU, NEG
+  sentimentScore Float?          // -1.0 to 1.0
+  status         Status          @default(NEW)
+  createdAt      DateTime        @default(now())
+  workspaceId    String
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  themes         FeedbackTheme[]
+  
+  // Direct vector embedding column via pgvector extension
+  embedding      Unsupported("vector(1536)")?
+
+  @@index([workspaceId])
+}
+
+model Theme {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  color       String?
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  feedback    FeedbackTheme[]
+}
+
+model FeedbackTheme {
+  feedbackId String
+  themeId    String
+  confidence Float    @default(1.0)
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  theme      Theme    @relation(fields: [themeId], references: [id], onDelete: Cascade)
+
+  @@id([feedbackId, themeId])
+}
+
+model Report {
+  id          String    @id @default(cuid())
+  title       String
+  periodStart DateTime
+  periodEnd   DateTime
+  contentJson String    @db.Text
+  createdAt   DateTime  @default(now())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  generatedBy User      @relation(fields: [userId], references: [id])
+}
