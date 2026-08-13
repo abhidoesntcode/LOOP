@@ -60,15 +60,21 @@ export async function POST(req: Request) {
     });
 
     // Save report
-    const company = await prisma.company.findFirst();
+    const workspace = await prisma.workspace.findFirst();
+    const user = await prisma.user.findFirst();
+
+    if (!workspace || !user) {
+      return NextResponse.json({ error: 'Workspace or user not found' }, { status: 500 });
+    }
+
     const report = await prisma.report.create({
       data: {
         title: `VoC Report - ${new Date().toLocaleDateString()}`,
         periodStart: new Date(periodStart || Date.now() - 30 * 24 * 60 * 60 * 1000),
         periodEnd: new Date(periodEnd || Date.now()),
         contentJson: JSON.stringify({ markdown: text, stats }),
-        companyId: company!.id,
-        generatedBy: 'AI',
+        workspaceId: workspace.id,
+        userId: user.id,
       }
     });
 

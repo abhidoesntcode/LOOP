@@ -6,12 +6,13 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const { name, email, password, companyId } = body;
+    const { name, email, password, workspaceId, companyId } = body;
+    const targetWorkspaceId = workspaceId || companyId;
 
-    if (!name || !email || !password || !companyId) {
+    if (!name || !email || !password || !targetWorkspaceId) {
       return NextResponse.json(
         {
-          message: "Name, email, password, and companyId are required",
+          message: "Name, email, password, and workspaceId are required",
         },
         { status: 400 }
       );
@@ -45,9 +46,9 @@ export async function POST(request: Request) {
       data: {
         name,
         email,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         role: "VIEWER",
-        companyId,
+        workspaceId: targetWorkspaceId,
       },
     });
 
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
           name: user.name,
           email: user.email,
           role: user.role,
-          companyId: user.companyId,
+          workspaceId: user.workspaceId,
         },
       },
       { status: 201 }

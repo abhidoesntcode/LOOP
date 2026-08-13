@@ -16,22 +16,22 @@ async function getExtractor() {
 
 export async function POST(req: Request) {
   try {
-    const { content, channel = 'In-App', customerLabel = 'Standard', companyId } = await req.json();
+    const { content, channel = 'In-App', customerLabel = 'Standard', workspaceId, companyId } = await req.json();
     if (!content) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    // Get the first company if companyId is not provided
-    let finalCompanyId = companyId;
-    if (!finalCompanyId) {
-      const company = await prisma.company.findFirst();
-      if (!company) {
-        return NextResponse.json({ error: 'No company found. Please run seed script.' }, { status: 500 });
+    // Get the first workspace if workspaceId is not provided
+    let finalWorkspaceId = workspaceId || companyId;
+    if (!finalWorkspaceId) {
+      const workspace = await prisma.workspace.findFirst();
+      if (!workspace) {
+        return NextResponse.json({ error: 'No workspace found. Please run seed script.' }, { status: 500 });
       }
-      finalCompanyId = company.id;
+      finalWorkspaceId = workspace.id;
     }
 
-    // 1. Ask AI to classify using Vercel AI SDK (works with Claude OR Gemini)
+    // 1. Ask AI to classify using Vercel AI SDK
     let sentiment = 'NEU';
     let sentimentScore = 0;
     let themes: string[] = ['General'];
@@ -64,9 +64,9 @@ Feedback: "${content}"`,
     // 2. Ensure themes exist in the database
     const themeRecords = await Promise.all(
       themes.map(async (themeName: string) => {
-        let theme = await prisma.theme.findFirst({ where: { name: themeName, companyId: finalCompanyId } });
+        let theme = await prisma.theme.findFirst({ where: { name: themeName, workspaceId: finalWorkspaceId } });
         if (!theme) {
-          theme = await prisma.theme.create({ data: { name: themeName, companyId: finalCompanyId, color: '#94a3b8' } });
+          theme = await prisma.theme.create({ data: { name: themeName, workspaceId: finalWorkspaceId, color: '#94a3b8' } });
         }
         return theme;
       })
@@ -80,22 +80,23 @@ Feedback: "${content}"`,
         customerLabel,
         sentiment,
         sentimentScore,
-        companyId: finalCompanyId,
+        workspaceId: finalWorkspaceId,
         themes: {
           create: themeRecords.map((t: any) => ({ themeId: t.id }))
         }
       }
     });
 
-    // 4. Generate local embedding and save via raw SQL
+    // 4. Generate local embedding and save via raw SQL if supported
     try {
       const extractor = await getExtractor();
       const output = await extractor(content, { pooling: 'mean', normalize: true });
       const vector = Array.from(output.data);
 
       await prisma.$executeRaw`
-        INSERT INTO "Embedding" ("id", "feedbackId", "vector")
-        VALUES (gen_random_uuid(), ${feedback.id}, ${vector}::vector)
+        UPDATE "Feedback"
+        SET "embedding" = ${vector}::vector
+        WHERE "id" = ${feedback.id}
       `;
     } catch (e) {
       console.error('Failed to generate embedding:', e);

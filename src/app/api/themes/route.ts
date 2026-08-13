@@ -6,7 +6,7 @@ export async function GET(req: Request) {
     const themes = await prisma.theme.findMany({
       include: {
         _count: {
-          select: { feedbacks: true }
+          select: { feedback: true }
         }
       }
     });
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
       name: t.name,
       description: t.description || '',
       color: t.color || '#6366f1',
-      count: t._count.feedbacks
+      count: t._count.feedback
     }));
 
     return NextResponse.json(formatted);
